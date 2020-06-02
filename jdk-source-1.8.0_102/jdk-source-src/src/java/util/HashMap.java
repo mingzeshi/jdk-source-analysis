@@ -856,7 +856,6 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                              * 0000 0000 0000 0000 0000 0000 0001 0000  // 老数组length
                              *
                              * 下面是将老数组此桶的Node串串拆成两个串串，分别落在上半段与下半段
-                             *
                              */
                             if ((e.hash & oldCap) == 0) { // 落在上半段；例如老数组长度16，第5位是最高位，如果hash值第5位是0，那桶范围就是4位，0-15(即使4位都是1也不会超过15)
                                 if (loTail == null) // 上半段的尾节点等于NULL说明是首次循环

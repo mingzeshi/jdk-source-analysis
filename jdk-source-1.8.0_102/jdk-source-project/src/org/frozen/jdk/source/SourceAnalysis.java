@@ -1,9 +1,10 @@
 package org.frozen.jdk.source;
 
+import com.sun.corba.se.spi.orbutil.threadpool.ThreadPool;
+
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -58,6 +59,20 @@ public class SourceAnalysis {
         condition.signal();
         condition.signalAll();
 
+        /**
+         * ThreadPool
+         */
+        Executors.newFixedThreadPool(10);
+        ExecutorService threadPool = Executors.newCachedThreadPool();
+        Executors.newScheduledThreadPool(10);
+        Executors.newSingleThreadExecutor();
+
+        threadPool.shutdown();
+        threadPool.shutdownNow();
+
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(10, 10,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<Runnable>());
 
     }
 }

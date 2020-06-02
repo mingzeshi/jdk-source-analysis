@@ -1394,7 +1394,7 @@ public abstract class AbstractQueuedSynchronizer
             selfInterrupt(); // Thread.currentThread().interrupt();  当前线程阻断
 
         /**
-         * !tryAcquire(arg) : 加锁；可能是重入锁，也可能是持有锁的线程释放了锁 // 如果加锁成功，该干什么干什么
+         * !tryAcquire(arg) : 加锁；可能是重入锁，也可能是持有锁的线程释放了锁，如果加锁成功，该干什么干什么
          * addWaiter(Node.EXCLUSIVE) :
          *  )、static final Node EXCLUSIVE = null; 表示此锁是排他锁
          *  )、将当前线程封装Node，并加入AQS队列
