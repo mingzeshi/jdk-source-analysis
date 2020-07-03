@@ -1057,7 +1057,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     final V putVal(K key, V value, boolean onlyIfAbsent) {
         /**
          * 为什么key与value都不能是NULL？而hashmap的key与value都可以是NULL，只是key只能有一个NULL
-         * 设想，if(map.containsKey("c")) { map.get("c") } 这段代码；hashmap调用：如果if条件成立，但get方法返回NULL，能说明value一定是NULL吗？
+         * 设想，在HashMap中，if(map.containsKey("c")) { map.get("c") } 这段代码；hashmap调用：如果if条件成立，但get方法返回NULL，能说明value一定是NULL吗？
          * 当然不能，其它线程可能在if条件成立后，删除了此key的KV，所以这样操作不是线程安全的，因为hashmap就是线程不安全的，
          * 所以官方对此的解释是如果你想让容器线程安全，就不要使用hashmap，请使用concurrenthashmap，
          * 因为hashmap是不保证线程安全的，如果你用并发操作hashmap出了事，人家不管。线程安全请使用concurrenthashmap
