@@ -377,14 +377,17 @@ public class ReentrantReadWriteLock
          * condition wait and re-established in tryAcquire.
          */
 
+        /**
+         * 尝试完全释放锁
+         */
         protected final boolean tryRelease(int releases) {
-            if (!isHeldExclusively())
+            if (!isHeldExclusively()) // 如果加锁的线程不是当前线程，则抛出异常(不可以去释放别人加的锁吧)
                 throw new IllegalMonitorStateException();
-            int nextc = getState() - releases;
-            boolean free = exclusiveCount(nextc) == 0;
+            int nextc = getState() - releases; // 减去释放锁的数量，这里通常是1
+            boolean free = exclusiveCount(nextc) == 0; // 判断独占锁的数量是否是0
             if (free)
-                setExclusiveOwnerThread(null);
-            setState(nextc);
+                setExclusiveOwnerThread(null); // 如果独占锁的数量是0，则设置持有独占锁的线程持有者为null
+            setState(nextc); // 设置减去锁数量后的state状态
             return free;
         }
 
@@ -400,24 +403,25 @@ public class ReentrantReadWriteLock
              *    queue policy allows it. If so, update state
              *    and set owner.
              */
-            Thread current = Thread.currentThread();
-            int c = getState();
-            int w = exclusiveCount(c);
-            if (c != 0) {
+            Thread current = Thread.currentThread(); // 拿到当前线程
+            int c = getState(); // 拿到锁的状态
+            int w = exclusiveCount(c); // 拿到读写锁的状态
+            if (c != 0) { // 表示被加了锁
                 // (Note: if c != 0 and w == 0 then shared count != 0)
-                if (w == 0 || current != getExclusiveOwnerThread())
-                    return false;
-                if (w + exclusiveCount(acquires) > MAX_COUNT)
+                if (w == 0 || current != getExclusiveOwnerThread()) // w == 0 表示有人加了独占锁，current != getExclusiveOwnerThread() 表示加独占锁的人不是当前线程
+                    return false; // 加独占锁失败
+                if (w + exclusiveCount(acquires) > MAX_COUNT) // 判断加的独占锁的数量是不是超过了最大加锁数量的限制
                     throw new Error("Maximum lock count exceeded");
                 // Reentrant acquire
-                setState(c + acquires);
-                return true;
+                setState(c + acquires); // 到了这里，说明是可以独占加锁的，设置state的状态(独占锁的数量)
+                return true; // 加锁成功
             }
-            if (writerShouldBlock() ||
-                !compareAndSetState(c, c + acquires))
-                return false;
-            setExclusiveOwnerThread(current);
-            return true;
+            // 表示没有加过锁
+            if (writerShouldBlock() || // 是否需要被阻塞(写线程是不需要被阻塞的，都返回false)
+                !compareAndSetState(c, c + acquires)) // 如果CAS加锁立刻失败
+                return false; // 返回加锁失败
+            setExclusiveOwnerThread(current); // 加锁成功，设置当前线程为持有锁的线程
+            return true; // 返回加锁成功标记
         }
 
         /**
@@ -535,13 +539,13 @@ public class ReentrantReadWriteLock
                     } else {  // 如果第一个加读锁的线程不是当前线程
                         if (rh == null) { // 如果最后一个获取读锁的线程的计数器是NULL
                             rh = cachedHoldCounter; // 成员变量赋值
-                            if (rh == null || rh.tid != getThreadId(current)) { // 如果最后一个计数器为NULL或计数器的线程不是当前线程
+                            if (rh == null || rh.tid != getThreadId(current)) { // 如果最后一个获取锁的线程计数器为NULL或计数器的线程不是当前线程
                                 rh = readHolds.get(); // 当前线程的HoldCounter对象赋给最后一个获取读锁的线程的计数器(ThreadLocal)
                                 if (rh.count == 0) // 最后一个获取读锁的线程计数器的count是0
                                     readHolds.remove(); // 删除ThreadLocal中的HoldCounter
                             }
                         }
-                        if (rh.count == 0) // 如果最后一个获取读锁的线程的计数器不是null
+                        if (rh.count == 0) // 如果最后一个获取读锁的线程的计数器是null
                             return -1; // 返回-1加读锁失败
                     }
                 }
@@ -638,6 +642,9 @@ public class ReentrantReadWriteLock
             }
         }
 
+        /**
+         * 判断加锁的线程是否是当前线程
+         */
         protected final boolean isHeldExclusively() {
             // While we must in general read state before owner,
             // we don't need to do so to check if current thread is owner

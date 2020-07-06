@@ -524,7 +524,7 @@ public abstract class AbstractQueuedSynchronizer
 
             /**
              *  想一想，这里为什么上一个节点如果是null要抛异常？head的prev不就是null吗？
-             *  head节点是正在持有锁的Node，所以不可能到这里，不可能持有锁的Node线程还需要加入            *  AQS吧
+             *  head节点是正在持有锁的Node，所以不可能到这里，不可能持有锁的Node线程还需要加入AQS吧
              */
             if (p == null)
                 throw new NullPointerException();
@@ -636,14 +636,14 @@ public abstract class AbstractQueuedSynchronizer
                 node.prev = t; // 当前节点的prev指向tail
                 if (compareAndSetTail(t, node)) { // 使用CAS方式将AQS链表的tail节点更新成当前节点(刚刚新加入，当然是尾节点tail)
                     t.next = node; // 如果更新成功，将原tail节点的next指向当前节点
-                    return t; // 返回当前节点，刚刚加入AQS队列的节点
+                    return t; // 返回原tail节点
                 }
             }
         }
         /**
          * 当AQS队列tail节点为NULL，此时说明AQS队列还未初始化
          *  第一次for循环：tail节点是NULL(未初始化)，创建一个"空"Node节点CAS方式更新head，并将head赋给tail(此时并未使用CAS方式更新tail)
-         *  第二次for循环：tail经不为NULL，将当前Node的prev指向tail，CAS方式更新tail为当前节点，将原tail节点的next指向当前节点，最终返回
+         *  第二次for循环：tail经不为NULL，将当前Node的prev指向tail，CAS方式更新tail为当前节点，将原tail节点的next指向当前节点，最终返回原tail节点
          */
     }
 
@@ -904,12 +904,12 @@ public abstract class AbstractQueuedSynchronizer
          * 将会通知后继节点，使后继节点的线程得以运行
          */
         int ws = pred.waitStatus; // 上一个节点的状态
-        if (ws == Node.SIGNAL) // 如果当前节点的上一个节点释放了同步状态或被取消
+        if (ws == Node.SIGNAL) // 如果当前节点的前驱节点是SIGNAL状态，那么当前节点要被阻塞，当前驱节点释放了同步状态或被取消时，必须唤醒其后继节点，也就是当前节点
             /*
              * This node has already set status asking a release
              * to signal it, so it can safely park.
              */
-            return true; // 通知后继节点(阻断后继线程，因为后继线程在那hang着(当前节点的前驱节点通知后继节点，就是当前节点))
+            return true; // 通知后继节点需要被阻塞(当前节点的前驱节点通知后继节点，就是当前节点要被阻塞)
         /**
          * CANCELLED，值为1 。场景：当该线程等待超时或者被中断，需要从同步队列中取消等待，则该线程被置1，
          * 即被取消（这里该线程在取消之前是等待状态）。节点进入了取消状态则不再变化；
@@ -1016,7 +1016,7 @@ public abstract class AbstractQueuedSynchronizer
                      * 所以parkAndCheckInterrupt()方法才要返回是否线程被中断，如果中断位是true(实际中断的是挂起操作)
                      * 那就将标志位返回上一级，从而将线程真正的中断抛出InterruptedException异常
                      */
-                    parkAndCheckInterrupt())
+                    parkAndCheckInterrupt()) // 阻塞、挂起线程
                     /**
                      * 如果线程被阻断(为什么线程被阻断还要继续阻断？线程被挂起的时候阻断的是挂起，而要真正的阻断线程，就得再阻断)
                      * 返回true表示要阻断该节点
@@ -1135,7 +1135,7 @@ public abstract class AbstractQueuedSynchronizer
                 if (p == head) { // 如果当前节点的前驱节点是head，说明当前节点的前驱节点是持有锁的节点
                     int r = tryAcquireShared(arg); // 对当前节点尝试获取共享锁
                     if (r >= 0) { // r大于0，成功获取共享锁
-                        setHeadAndPropagate(node, r); // 设置当前节点为头节点，并将读锁向下传播(释放队列排队的读锁)
+                        setHeadAndPropagate(node, r); // 设置当前节点为头节点，并将读锁向下传播(释放队列排队的下一个读锁)
                         p.next = null; // help GC 回收资源
                         if (interrupted) // 如果要线程要被阻断
                             selfInterrupt(); // 阻断线程
@@ -1553,7 +1553,7 @@ public abstract class AbstractQueuedSynchronizer
      */
     public final boolean releaseShared(int arg) {
         if (tryReleaseShared(arg)) { // 成功释放读锁
-            doReleaseShared(); // 释放队列中的其它正在等待的共享锁
+            doReleaseShared(); // 释放队列中下一个正在阻塞等待的锁
             return true; // 成功释放共享锁
         }
         return false; // 没能成功释放共享锁
@@ -1736,7 +1736,7 @@ public abstract class AbstractQueuedSynchronizer
         return h != t && // 因为head是正在持有锁的节点，如果head节点不等于tail节点；说明至少tail节点在排队
             ((s = h.next) == null || s.thread != Thread.currentThread()); // 初始化AQS时有线程排队或head后继节点不是当前线程(有其它线程在排队)
         /**
-         * (s = h.next) == null 说明，在初始化的时候neq(final Node node)方法：
+         * (s = h.next) == null 说明，在初始化的时候enq(final Node node)方法：
          * private Node enq(final Node node) {
          *    // ......
          *    if (compareAndSetHead(new Node()))
@@ -1744,7 +1744,7 @@ public abstract class AbstractQueuedSynchronizer
          *  }
          * 1、刚刚初始化AQS的时候，会用CAS更新head节点，并且new Node()，这个时候，他的next一定是NULL，
          *      而当前正在初始化的线程，也是在排队的线程
-         * 2、s.thread也就是head后继节点的thread不等于当前线程，说明持有锁的线程节点后排队的不是当前线程
+         * 2、s.thread也就是head后继节点的thread不等于当前线程，说明持有锁的线程节点的后继节点不是当前线程
          *       (AQS队列中)还有其它线程在排队
          */
     }
