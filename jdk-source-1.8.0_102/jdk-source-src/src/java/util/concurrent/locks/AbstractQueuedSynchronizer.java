@@ -1878,6 +1878,9 @@ public abstract class AbstractQueuedSynchronizer
      * Called only when needed by isOnSyncQueue.
      * @return true if present
      */
+    /**
+     * 查询此节点是否是尾节点
+     */
     private boolean findNodeFromTail(Node node) {
         Node t = tail;
         for (;;) {

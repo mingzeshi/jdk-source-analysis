@@ -164,6 +164,9 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             return getExclusiveOwnerThread() == Thread.currentThread();
         }
 
+        /**
+         * 创建ConditionObject
+         */
         final ConditionObject newCondition() {
             return new ConditionObject();
         }
@@ -524,6 +527,9 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * </ul>
      *
      * @return the Condition object
+     */
+    /**
+     * 创建Condition
      */
     public Condition newCondition() {
         return sync.newCondition();
